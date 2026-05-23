@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowRightIcon } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
-import { formatPrice } from "@/lib/utils"
+import { formatPrice, priceView } from "@/lib/utils"
 import {
   Command,
   CommandDialog,
@@ -22,6 +22,7 @@ type SearchResult = {
   name: string
   slug: string
   price: number
+  sale_price: number | null
   image_url: string
   category: { name: string; slug: string } | null
 }
@@ -64,7 +65,7 @@ export function SearchDialog({
       const pattern = `%${term}%`
       const { data } = await supabase
         .from("products")
-        .select("id, name, slug, price, image_url, category:categories(name, slug)")
+        .select("id, name, slug, price, sale_price, image_url, category:categories(name, slug)")
         .or(`name.ilike.${pattern},description.ilike.${pattern}`)
         .limit(6)
 
@@ -123,9 +124,26 @@ export function SearchDialog({
                     </span>
                   ) : null}
                 </span>
-                <span className="ms-auto text-sm tabular-nums text-muted-foreground">
-                  {formatPrice(product.price)}
-                </span>
+                {(() => {
+                  const price = priceView(
+                    Number(product.price),
+                    product.sale_price == null ? null : Number(product.sale_price)
+                  )
+                  return price.onSale ? (
+                    <span className="ms-auto text-sm tabular-nums">
+                      <span className="text-foreground">
+                        {formatPrice(price.current)}
+                      </span>{" "}
+                      <span className="text-muted-foreground line-through">
+                        {formatPrice(price.original)}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="ms-auto text-sm tabular-nums text-muted-foreground">
+                      {formatPrice(product.price)}
+                    </span>
+                  )
+                })()}
               </CommandItem>
             ))}
           </CommandGroup>

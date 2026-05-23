@@ -4,7 +4,7 @@ import type { Metadata } from "next"
 import { ChevronRightIcon, RotateCcwIcon, TruckIcon } from "lucide-react"
 
 import { getProductBySlug, getRelatedProducts } from "@/lib/products"
-import { formatPrice } from "@/lib/utils"
+import { formatPrice, priceView } from "@/lib/utils"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { ProductPurchase } from "@/components/product-purchase"
@@ -32,6 +32,7 @@ export default async function ProductPage({ params }: { params: Params }) {
   if (!product) notFound()
 
   const related = await getRelatedProducts(product, 4)
+  const price = priceView(product.price, product.sale_price)
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -86,9 +87,20 @@ export default async function ProductPage({ params }: { params: Params }) {
               </p>
             ) : null}
             <h1 className="mt-2 font-heading text-4xl">{product.name}</h1>
-            <p className="mt-3 text-xl tabular-nums">
-              {formatPrice(product.price)}
-            </p>
+            {price.onSale ? (
+              <p className="mt-3 flex items-baseline gap-3">
+                <span className="text-xl tabular-nums">
+                  {formatPrice(price.current)}
+                </span>
+                <span className="text-lg tabular-nums text-muted-foreground line-through">
+                  {formatPrice(price.original)}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-3 text-xl tabular-nums">
+                {formatPrice(product.price)}
+              </p>
+            )}
 
             {product.description ? (
               <p className="mt-6 leading-relaxed text-muted-foreground">
@@ -102,7 +114,7 @@ export default async function ProductPage({ params }: { params: Params }) {
                   id: product.id,
                   name: product.name,
                   slug: product.slug,
-                  price: product.price,
+                  price: price.current,
                   image_url: product.image_url,
                 }}
               />

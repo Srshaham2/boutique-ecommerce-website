@@ -1,6 +1,7 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/admin"
+import { priceView } from "@/lib/utils"
 import { shippingFor, type OrderLineItem } from "@/lib/checkout"
 import { sendOrderEmails } from "@/lib/email"
 import { buildShippingLabelPdf } from "@/lib/shipping-label"
@@ -54,7 +55,7 @@ export async function placeOrder(
   const ids = [...new Set(input.items.map((i) => i.id))]
   const { data: products, error: productsError } = await supabase
     .from("products")
-    .select("id, name, price")
+    .select("id, name, price, sale_price")
     .in("id", ids)
 
   if (productsError) {
@@ -70,11 +71,14 @@ export async function placeOrder(
     if (!product) {
       return { ok: false, error: "One or more items are no longer available." }
     }
+    const salePrice =
+      product.sale_price == null ? null : Number(product.sale_price)
     lineItems.push({
       name: product.name,
       size: item.size,
       quantity,
-      price: Number(product.price),
+      // Charge the sale price when the product is on sale (never trust the client).
+      price: priceView(Number(product.price), salePrice).current,
     })
   }
 

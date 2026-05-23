@@ -4,7 +4,7 @@ import Link from "next/link"
 import { ShoppingBagIcon } from "lucide-react"
 import { toast } from "sonner"
 
-import { cn, formatPrice } from "@/lib/utils"
+import { cn, formatPrice, priceView } from "@/lib/utils"
 import { useCart } from "@/components/cart/cart-provider"
 
 export type ProductCardData = {
@@ -12,6 +12,7 @@ export type ProductCardData = {
   name: string
   slug: string
   price: number
+  sale_price?: number | null
   image_url: string
   hover_image_url?: string | null
   badge?: string | null
@@ -26,6 +27,7 @@ export function ProductCard({
   className?: string
 }) {
   const { addItem } = useCart()
+  const price = priceView(product.price, product.sale_price)
 
   function quickAdd(e: React.MouseEvent) {
     e.preventDefault()
@@ -34,7 +36,7 @@ export function ProductCard({
         id: product.id,
         name: product.name,
         slug: product.slug,
-        price: product.price,
+        price: price.current,
         image_url: product.image_url,
       },
       { quantity: 1 }
@@ -85,9 +87,18 @@ export function ProductCard({
 
       <div className="mt-4 text-center">
         <h3 className="font-heading text-lg text-foreground">{product.name}</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {formatPrice(product.price)}
-        </p>
+        {price.onSale ? (
+          <p className="mt-1 text-sm">
+            <span className="text-foreground">{formatPrice(price.current)}</span>{" "}
+            <span className="text-muted-foreground line-through">
+              {formatPrice(price.original)}
+            </span>
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatPrice(product.price)}
+          </p>
+        )}
       </div>
     </Link>
   )

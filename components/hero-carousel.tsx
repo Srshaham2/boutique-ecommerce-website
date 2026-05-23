@@ -35,53 +35,59 @@ export function HeroCarousel() {
   }, [])
 
   return (
-    <section className="relative h-[50vh] min-h-[300px] w-full overflow-hidden bg-muted sm:h-[40vh]">
-      {slides.map((slide, i) => (
-        <div
-          key={slide.title}
-          className={cn(
-            "absolute inset-0 transition-opacity duration-1000 ease-in-out",
-            i === current ? "opacity-100" : "opacity-0"
-          )}
-          aria-hidden={i !== current}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={slide.image}
-            alt={slide.title}
-            className="h-full w-full object-cover object-center"
-            loading={i === 0 ? "eager" : "lazy"}
-          />
-          <div className="absolute inset-0 bg-black/15" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-            <h1 className="font-script text-5xl text-white drop-shadow-md sm:text-6xl md:text-7xl">
-              {slide.title}
-            </h1>
-          </div>
-        </div>
-      ))}
-
-      {/* Dots */}
-      <div className="absolute bottom-6 right-6 z-10 flex gap-2.5">
+    // Outer wrapper is NOT clipped, so the scroll-down chevron that straddles
+    // the bottom edge can show in full.
+    <section className="relative w-full">
+      {/* Image box keeps overflow-hidden for the cross-fade between slides. */}
+      <div className="relative h-[50vh] min-h-[300px] w-full overflow-hidden bg-muted sm:h-[40vh]">
         {slides.map((slide, i) => (
-          <button
+          <div
             key={slide.title}
-            type="button"
-            aria-label={`Go to slide ${i + 1}`}
-            onClick={() => setCurrent(i)}
             className={cn(
-              "size-2.5 rounded-full border border-white/80 transition-colors",
-              i === current ? "bg-white" : "bg-transparent hover:bg-white/50"
+              "absolute inset-0 transition-opacity duration-1000 ease-in-out",
+              i === current ? "opacity-100" : "opacity-0"
             )}
-          />
+            aria-hidden={i !== current}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={slide.image}
+              alt={slide.title}
+              className="h-full w-full object-cover object-center"
+              loading={i === 0 ? "eager" : "lazy"}
+            />
+            <div className="absolute inset-0 bg-black/15" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+              <h1 className="font-script text-5xl text-white drop-shadow-md sm:text-6xl md:text-7xl">
+                {slide.title}
+              </h1>
+            </div>
+          </div>
         ))}
+
+        {/* Dots */}
+        <div className="absolute bottom-6 right-6 z-10 flex gap-2.5">
+          {slides.map((slide, i) => (
+            <button
+              key={slide.title}
+              type="button"
+              aria-label={`Go to slide ${i + 1}`}
+              onClick={() => setCurrent(i)}
+              className={cn(
+                "size-2.5 rounded-full border border-white/80 transition-colors",
+                i === current ? "bg-white" : "bg-transparent hover:bg-white/50"
+              )}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Scroll-down chevron */}
+      {/* Scroll-down chevron — sits outside the clipped image box so the full
+          circle is visible, straddling the hero's bottom edge. */}
       <a
         href="#shop"
         aria-label="Scroll to products"
-        className="absolute bottom-0 left-1/2 z-10 flex size-12 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full bg-background text-foreground shadow-md transition-transform hover:translate-y-[55%]"
+        className="absolute bottom-0 left-1/2 z-20 flex size-12 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full bg-background text-foreground shadow-md transition-transform hover:translate-y-[55%]"
       >
         <ChevronDownIcon className="size-5" />
       </a>

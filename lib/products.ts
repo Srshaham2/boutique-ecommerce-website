@@ -15,6 +15,7 @@ export type Product = {
   slug: string
   description: string | null
   price: number
+  sale_price: number | null
   category_id: string | null
   image_url: string
   hover_image_url: string | null
@@ -43,6 +44,7 @@ function normalize(row: Record<string, unknown>): Product {
   return {
     ...(row as Product),
     price: Number(row.price),
+    sale_price: row.sale_price == null ? null : Number(row.sale_price),
   }
 }
 

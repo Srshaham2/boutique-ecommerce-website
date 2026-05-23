@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRightIcon, MessageCircleIcon } from "lucide-react"
+import { ArrowRightIcon } from "lucide-react"
 
 import { getCategories, getProducts } from "@/lib/products"
 import { SiteHeader } from "@/components/site-header"
@@ -118,16 +118,6 @@ export default async function Page() {
       </main>
 
       <SiteFooter />
-
-      {/* Floating chat button */}
-      <button
-        type="button"
-        aria-label="Chat with us"
-        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-foreground px-4 py-3 text-sm font-medium text-background shadow-lg transition-transform hover:scale-105"
-      >
-        <MessageCircleIcon className="size-5" />
-        <span className="hidden sm:inline">Chat</span>
-      </button>
     </div>
   )
 }
