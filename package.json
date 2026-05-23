@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check-email": "node --env-file=.env.local scripts/check-email.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",

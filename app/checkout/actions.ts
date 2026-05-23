@@ -21,7 +21,7 @@ export type PlaceOrderInput = {
 }
 
 export type PlaceOrderResult =
-  | { ok: true; orderNumber: string }
+  | { ok: true; orderNumber: string; emailSent: boolean }
   | { ok: false; error: string }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -123,7 +123,9 @@ export async function placeOrder(
   // ── Generate the label + send both emails. ─────────────────────────────────
   // The order is already saved, so an email/PDF failure must NOT make the
   // customer resubmit (and double-order). We log loudly instead and still
-  // confirm the order; the record is the source of truth.
+  // confirm the order; the record is the source of truth. `emailSent` is
+  // surfaced to the UI so a failure is visible rather than silent.
+  let emailSent = false
   try {
     const labelPdf = await buildShippingLabelPdf({
       orderNumber,
@@ -152,6 +154,7 @@ export async function placeOrder(
       date,
       labelPdf,
     })
+    emailSent = true
   } catch (err) {
     console.error(
       `[placeOrder] order ${orderNumber} saved but email/PDF failed:`,
@@ -159,7 +162,7 @@ export async function placeOrder(
     )
   }
 
-  return { ok: true, orderNumber }
+  return { ok: true, orderNumber, emailSent }
 }
 
 function round2(n: number): number {

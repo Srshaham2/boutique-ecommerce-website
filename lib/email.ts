@@ -77,6 +77,14 @@ function getTransport() {
   })
 }
 
+/**
+ * Verifies the SMTP credentials/connection without sending an email.
+ * Throws if not configured or the login fails. Useful for diagnostics.
+ */
+export async function verifyEmailTransport(): Promise<void> {
+  await getTransport().verify()
+}
+
 function formatAddress(d: OrderEmailData): string {
   return `${d.addressLine}, ${d.city}, ${d.state} ${d.zip}`
 }

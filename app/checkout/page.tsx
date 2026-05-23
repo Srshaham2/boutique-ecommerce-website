@@ -19,6 +19,7 @@ export default function CheckoutPage() {
   const { items, subtotal, count, clear, hydrated } = useCart()
   const [placed, setPlaced] = React.useState(false)
   const [orderNumber, setOrderNumber] = React.useState<string | null>(null)
+  const [emailSent, setEmailSent] = React.useState(true)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -52,6 +53,7 @@ export default function CheckoutPage() {
 
       if (result.ok) {
         setOrderNumber(result.orderNumber)
+        setEmailSent(result.emailSent)
         setPlaced(true)
         clear()
         window.scrollTo({ top: 0, behavior: "smooth" })
@@ -80,8 +82,19 @@ export default function CheckoutPage() {
               </p>
             ) : null}
             <p className="max-w-md text-muted-foreground">
-              Your order is confirmed. A confirmation email is on its way to your
-              inbox. (This is a demo checkout — no payment was taken.)
+              {emailSent ? (
+                <>
+                  Your order is confirmed. A confirmation email is on its way to
+                  your inbox.
+                </>
+              ) : (
+                <>
+                  Your order is confirmed and saved — but we couldn&apos;t send
+                  the confirmation email just now. Don&apos;t worry: the shop has
+                  your details and will follow up.
+                </>
+              )}{" "}
+              (This is a demo checkout — no payment was taken.)
             </p>
             <Button
               nativeButton={false}
