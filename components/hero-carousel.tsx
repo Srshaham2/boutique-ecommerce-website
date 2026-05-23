@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { ChevronDownIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -9,8 +8,6 @@ import { cn } from "@/lib/utils"
 type Slide = {
   image: string
   title: string
-  cta: string
-  href: string
 }
 
 const slides: Slide[] = [
@@ -18,15 +15,11 @@ const slides: Slide[] = [
     image:
       "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=2000&q=80",
     title: "Luxury, in bloom",
-    cta: "Shop New Arrivals",
-    href: "/shop?filter=new",
   },
   {
     image:
       "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=2000&q=80",
     title: "Endless Summer",
-    cta: "Shop Dresses",
-    href: "/shop?category=dresses",
   },
 ]
 
@@ -64,12 +57,6 @@ export function HeroCarousel() {
             <h1 className="font-script text-5xl text-white drop-shadow-md sm:text-6xl md:text-7xl">
               {slide.title}
             </h1>
-            <Link
-              href={slide.href}
-              className="mt-5 inline-flex items-center border border-white/80 bg-white/10 px-8 py-3 text-xs font-medium uppercase tracking-[0.18em] text-white backdrop-blur-sm transition-colors hover:bg-white hover:text-foreground"
-            >
-              {slide.cta}
-            </Link>
           </div>
         </div>
       ))}
