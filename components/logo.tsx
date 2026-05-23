@@ -30,7 +30,7 @@ export function Logo({
       {imgFailed ? (
         <span
           className={cn(
-            "font-script text-4xl leading-none sm:text-5xl",
+            "font-script text-7xl leading-none sm:text-8xl",
             fallbackClassName
           )}
         >
@@ -42,7 +42,7 @@ export function Logo({
           src="/bielux-logo.png"
           alt="BieLux"
           onError={() => setImgFailed(true)}
-          className={cn("h-10 w-auto sm:h-12", imgClassName)}
+          className={cn("h-20 w-auto sm:h-24", imgClassName)}
         />
       )}
     </Link>

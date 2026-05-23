@@ -48,7 +48,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
         {/* Top row: mobile menu / logo / utilities */}
-        <div className="grid h-20 grid-cols-[1fr_auto_1fr] items-center gap-2 sm:h-24">
+        <div className="grid h-28 grid-cols-[1fr_auto_1fr] items-center gap-2 sm:h-32">
           {/* Left — mobile menu */}
           <div className="flex items-center justify-start lg:hidden">
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
