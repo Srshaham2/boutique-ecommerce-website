@@ -2,16 +2,15 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { CheckCircle2Icon } from "lucide-react"
+import { CheckCircle2Icon, Loader2Icon } from "lucide-react"
 
 import { formatPrice } from "@/lib/utils"
+import { shippingFor } from "@/lib/checkout"
 import { useCart } from "@/components/cart/cart-provider"
+import { placeOrder } from "@/app/checkout/actions"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
-
-const SHIPPING_THRESHOLD = 75
-const SHIPPING_FEE = 8
 
 const inputClass =
   "h-11 w-full border border-input bg-background px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -19,15 +18,51 @@ const inputClass =
 export default function CheckoutPage() {
   const { items, subtotal, count, clear, hydrated } = useCart()
   const [placed, setPlaced] = React.useState(false)
+  const [orderNumber, setOrderNumber] = React.useState<string | null>(null)
+  const [submitting, setSubmitting] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
-  const shipping = subtotal >= SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE
+  const shipping = shippingFor(subtotal)
   const total = subtotal + shipping
 
-  function placeOrder(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setPlaced(true)
-    clear()
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    if (submitting) return
+
+    const fd = new FormData(e.currentTarget)
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const result = await placeOrder({
+        email: String(fd.get("email") ?? ""),
+        firstName: String(fd.get("firstName") ?? ""),
+        lastName: String(fd.get("lastName") ?? ""),
+        phone: String(fd.get("phone") ?? ""),
+        address: String(fd.get("address") ?? ""),
+        city: String(fd.get("city") ?? ""),
+        state: String(fd.get("state") ?? ""),
+        zip: String(fd.get("zip") ?? ""),
+        items: items.map((i) => ({
+          id: i.id,
+          size: i.size,
+          quantity: i.quantity,
+        })),
+      })
+
+      if (result.ok) {
+        setOrderNumber(result.orderNumber)
+        setPlaced(true)
+        clear()
+        window.scrollTo({ top: 0, behavior: "smooth" })
+      } else {
+        setError(result.error)
+      }
+    } catch {
+      setError("Something went wrong placing your order. Please try again.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -39,9 +74,14 @@ export default function CheckoutPage() {
           <div className="flex flex-col items-center gap-4 py-24 text-center">
             <CheckCircle2Icon className="size-14 text-foreground" strokeWidth={1} />
             <h1 className="font-script text-5xl">Thank you</h1>
+            {orderNumber ? (
+              <p className="font-heading text-xl">
+                Order <span className="font-medium">{orderNumber}</span>
+              </p>
+            ) : null}
             <p className="max-w-md text-muted-foreground">
-              Your order is confirmed. A receipt is on its way to your inbox.
-              (This is a demo checkout — no payment was taken.)
+              Your order is confirmed. A confirmation email is on its way to your
+              inbox. (This is a demo checkout — no payment was taken.)
             </p>
             <Button
               nativeButton={false}
@@ -74,13 +114,21 @@ export default function CheckoutPage() {
             </h1>
             <div className="mt-12 grid gap-12 lg:grid-cols-[1.3fr_1fr]">
               {/* Form */}
-              <form onSubmit={placeOrder} className="space-y-8">
+              <form onSubmit={handleSubmit} className="space-y-8">
                 <fieldset className="space-y-4">
                   <legend className="font-heading text-2xl">Contact</legend>
                   <input
                     required
                     type="email"
+                    name="email"
                     placeholder="Email address"
+                    className={inputClass}
+                  />
+                  <input
+                    required
+                    type="tel"
+                    name="phone"
+                    placeholder="Phone number"
                     className={inputClass}
                   />
                 </fieldset>
@@ -88,14 +136,29 @@ export default function CheckoutPage() {
                 <fieldset className="space-y-4">
                   <legend className="font-heading text-2xl">Shipping</legend>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <input required placeholder="First name" className={inputClass} />
-                    <input required placeholder="Last name" className={inputClass} />
+                    <input
+                      required
+                      name="firstName"
+                      placeholder="First name"
+                      className={inputClass}
+                    />
+                    <input
+                      required
+                      name="lastName"
+                      placeholder="Last name"
+                      className={inputClass}
+                    />
                   </div>
-                  <input required placeholder="Address" className={inputClass} />
+                  <input
+                    required
+                    name="address"
+                    placeholder="Address"
+                    className={inputClass}
+                  />
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <input required placeholder="City" className={inputClass} />
-                    <input required placeholder="State" className={inputClass} />
-                    <input required placeholder="ZIP" className={inputClass} />
+                    <input required name="city" placeholder="City" className={inputClass} />
+                    <input required name="state" placeholder="State" className={inputClass} />
+                    <input required name="zip" placeholder="ZIP" className={inputClass} />
                   </div>
                 </fieldset>
 
@@ -115,8 +178,26 @@ export default function CheckoutPage() {
                   </p>
                 </fieldset>
 
-                <Button type="submit" size="lg" className="w-full">
-                  Place order · {formatPrice(total)}
+                {error ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2Icon className="size-4 animate-spin" />
+                      Placing order…
+                    </>
+                  ) : (
+                    <>Place order · {formatPrice(total)}</>
+                  )}
                 </Button>
               </form>
 
