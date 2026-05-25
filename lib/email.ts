@@ -27,6 +27,15 @@ export type OrderEmailData = {
   labelPdf: Uint8Array
 }
 
+export type ShipmentEmailData = {
+  orderNumber: string
+  customerName: string
+  customerEmail: string
+  carrier: string
+  trackingNumber: string
+  items: OrderLineItem[]
+}
+
 /**
  * Sends both order emails: the notification to the shop (with the shipping
  * label attached) and the confirmation to the customer.
@@ -61,6 +70,34 @@ export async function sendOrderEmails(data: OrderEmailData): Promise<void> {
     text: buildCustomerText(data, fullAddress),
     html: buildCustomerHtml(data, fullAddress),
   })
+}
+
+/**
+ * Sends the customer a branded "your order has shipped" email with the carrier
+ * and tracking number. Throws if Gmail isn't configured so the caller can decide
+ * whether the failure should surface.
+ */
+export async function sendShipmentEmail(data: ShipmentEmailData): Promise<void> {
+  const transport = getTransport()
+  await transport.sendMail({
+    from: `"BieLux" <${process.env.GMAIL_USER}>`,
+    to: data.customerEmail,
+    subject: `Your BieLux order ${data.orderNumber} has shipped`,
+    text: buildShipmentText(data),
+    html: buildShipmentHtml(data),
+  })
+}
+
+/** Best-effort tracking URL for the common carriers; null when unknown. */
+export function trackingUrl(carrier: string, tracking: string): string | null {
+  const c = carrier.trim().toLowerCase()
+  const t = encodeURIComponent(tracking.trim())
+  if (!t) return null
+  if (c.includes("usps")) return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${t}`
+  if (c.includes("ups")) return `https://www.ups.com/track?tracknum=${t}`
+  if (c.includes("fedex")) return `https://www.fedex.com/fedextrack/?trknbr=${t}`
+  if (c.includes("dhl")) return `https://www.dhl.com/en/express/tracking.html?AWB=${t}`
+  return null
 }
 
 function getTransport() {
@@ -111,7 +148,8 @@ Order:
 ${itemLines}
 
 Please process the order.
-Have a great day.`
+Have a great day.
+Your secret agent ;)`
 }
 
 function buildShopHtml(d: OrderEmailData, fullAddress: string): string {
@@ -193,6 +231,52 @@ function buildCustomerHtml(d: OrderEmailData, fullAddress: string): string {
     <p style="margin-top:0;font-size:14px;line-height:1.6">
       ${escapeHtml(d.customerName)}<br/>${escapeHtml(fullAddress)}
     </p>
+    <p style="margin-top:32px">With love,<br/>The BieLux team</p>
+  `)
+}
+
+// ── Shipment notification ───────────────────────────────────────────────────
+
+function buildShipmentText(d: ShipmentEmailData): string {
+  const firstName = d.customerName.split(" ")[0] || "there"
+  const itemLines = d.items.map(lineLabel).join("\n")
+  const url = trackingUrl(d.carrier, d.trackingNumber)
+  return `Hi ${firstName},
+
+Good news — your BieLux order ${d.orderNumber} is on its way!
+
+Carrier: ${d.carrier}
+Tracking number: ${d.trackingNumber}${url ? `\nTrack it: ${url}` : ""}
+
+Items:
+${itemLines}
+
+With love,
+The BieLux team`
+}
+
+function buildShipmentHtml(d: ShipmentEmailData): string {
+  const firstName = escapeHtml(d.customerName.split(" ")[0] || "there")
+  const url = trackingUrl(d.carrier, d.trackingNumber)
+  const itemRows = d.items
+    .map(
+      (i) => `<li>${escapeHtml(i.name)}${i.size ? ` · Size ${escapeHtml(i.size)}` : ""} × ${i.quantity}</li>`
+    )
+    .join("")
+  return wrapHtml(`
+    <p style="font-size:16px">Hi ${firstName},</p>
+    <p>Good news — your BieLux order <strong>${d.orderNumber}</strong> is on its way!</p>
+    <table style="border-collapse:collapse;font-size:14px;line-height:1.8">
+      <tr><td style="padding-right:12px;color:#777">Carrier:</td><td>${escapeHtml(d.carrier)}</td></tr>
+      <tr><td style="padding-right:12px;color:#777">Tracking #:</td><td><strong>${escapeHtml(d.trackingNumber)}</strong></td></tr>
+    </table>
+    ${
+      url
+        ? `<p style="margin:20px 0"><a href="${url}" style="background:#111;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:14px">Track your package</a></p>`
+        : ""
+    }
+    <p style="margin-bottom:4px;color:#777;font-size:13px">In this shipment:</p>
+    <ul style="margin-top:0;font-size:14px;line-height:1.6">${itemRows}</ul>
     <p style="margin-top:32px">With love,<br/>The BieLux team</p>
   `)
 }

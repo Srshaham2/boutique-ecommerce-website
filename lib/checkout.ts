@@ -21,4 +21,6 @@ export type OrderLineItem = {
   quantity: number
   /** Unit price in USD. */
   price: number
+  /** Product id, stored so the backoffice can restock on cancellation. */
+  productId?: string
 }

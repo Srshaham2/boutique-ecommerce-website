@@ -117,6 +117,7 @@ export default async function ProductPage({ params }: { params: Params }) {
                   price: price.current,
                   image_url: product.image_url,
                 }}
+                variants={product.variants}
               />
             </div>
 

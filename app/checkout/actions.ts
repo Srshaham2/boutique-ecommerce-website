@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { priceView } from "@/lib/utils"
 import { shippingFor, type OrderLineItem } from "@/lib/checkout"
+import { logOrderEvent } from "@/lib/orders"
 import { sendOrderEmails } from "@/lib/email"
 import { buildShippingLabelPdf } from "@/lib/shipping-label"
 
@@ -79,6 +80,7 @@ export async function placeOrder(
       quantity,
       // Charge the sale price when the product is on sale (never trust the client).
       price: priceView(Number(product.price), salePrice).current,
+      productId: product.id,
     })
   }
 
@@ -88,6 +90,49 @@ export async function placeOrder(
   const shipping = shippingFor(subtotal)
   const total = round2(subtotal + shipping)
   const customerName = `${firstName} ${lastName}`
+
+  // ── Reserve stock atomically, per size variant (rejects oversell) ──────────
+  const stockItems = lineItems
+    .filter((i) => i.productId)
+    .map((i) => ({
+      product_id: i.productId as string,
+      size: i.size,
+      quantity: i.quantity,
+    }))
+
+  const { data: stockResult, error: stockError } = await supabase.rpc(
+    "decrement_stock",
+    { p_items: stockItems }
+  )
+
+  if (stockError) {
+    console.error("[placeOrder] stock check failed:", stockError)
+    return { ok: false, error: "Something went wrong. Please try again." }
+  }
+
+  const stock = stockResult as {
+    ok: boolean
+    failures: {
+      product_id: string
+      size: string | null
+      requested: number
+      available: number
+    }[]
+  } | null
+
+  if (stock && stock.ok === false) {
+    const first = stock.failures?.[0]
+    const name = (first && byId.get(first.product_id)?.name) || "An item"
+    const label = first?.size ? `${name} (size ${first.size})` : name
+    const available = first?.available ?? 0
+    return {
+      ok: false,
+      error:
+        available > 0
+          ? `${label} only has ${available} left in stock — please adjust your cart.`
+          : `${label} is out of stock.`,
+    }
+  }
 
   // ── Persist the order (the DB assigns the sequential order_number) ─────────
   const { data: order, error: insertError } = await supabase
@@ -105,15 +150,18 @@ export async function placeOrder(
       shipping,
       total,
     })
-    .select("order_number")
+    .select("id, order_number")
     .single()
 
   if (insertError || !order) {
+    // Stock was already reserved — put it back so inventory isn't lost.
+    await supabase.rpc("increment_stock", { p_items: stockItems })
     console.error("[placeOrder] failed to save order:", insertError)
     return { ok: false, error: "We couldn't save your order. Please try again." }
   }
 
   const orderNumber = order.order_number as string
+  await logOrderEvent(supabase, order.id as string, "new", "Order placed")
   const date = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",

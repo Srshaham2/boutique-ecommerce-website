@@ -1,12 +1,21 @@
 import "server-only"
 
 import { createClient } from "@/lib/supabase/server"
+import type { SizeType } from "@/lib/sizes"
 
 export type Category = {
   id: string
   name: string
   slug: string
   sort_order: number
+  size_type: SizeType
+}
+
+/** A single purchasable size of a product. `size` is null for one-size items. */
+export type Variant = {
+  id: string
+  size: string | null
+  stock_quantity: number
 }
 
 export type Product = {
@@ -27,7 +36,13 @@ export type Product = {
   category: { name: string; slug: string } | null
 }
 
+/** Product plus its per-size variants, used on the product detail page. */
+export type ProductWithVariants = Product & { variants: Variant[] }
+
 const PRODUCT_SELECT = "*, category:categories(name, slug)"
+// Detail pages also need the per-size variants for the size selector.
+const PRODUCT_DETAIL_SELECT =
+  "*, category:categories(name, slug), variants:product_variants(id, size, stock_quantity, sort_order)"
 
 export type ProductSort = "newest" | "price-asc" | "price-desc" | "name"
 
@@ -103,16 +118,31 @@ export async function getProducts(opts: ProductQuery = {}): Promise<Product[]> {
   return (data ?? []).map(normalize)
 }
 
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export async function getProductBySlug(
+  slug: string
+): Promise<ProductWithVariants | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("products")
-    .select(PRODUCT_SELECT)
+    .select(PRODUCT_DETAIL_SELECT)
     .eq("slug", slug)
     .maybeSingle()
 
   if (error) throw error
-  return data ? normalize(data) : null
+  if (!data) return null
+
+  const raw = data as Record<string, unknown>
+  const variants = ((raw.variants as Record<string, unknown>[]) ?? [])
+    .map((v) => ({
+      id: v.id as string,
+      size: (v.size as string | null) ?? null,
+      stock_quantity: Number(v.stock_quantity),
+      sort_order: Number(v.sort_order),
+    }))
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map(({ id, size, stock_quantity }) => ({ id, size, stock_quantity }))
+
+  return { ...normalize(raw), variants }
 }
 
 export async function getRelatedProducts(
