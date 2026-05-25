@@ -135,31 +135,28 @@ export async function deleteCategory(id: string): Promise<Result> {
   return { ok: true }
 }
 
-/** Swap a category's sort_order with its neighbour to move it up/down. */
-export async function reorderCategory(
-  id: string,
-  direction: "up" | "down"
-): Promise<Result> {
+/** Persist a new category order by writing each id's index as its sort_order. */
+export async function reorderCategories(orderedIds: string[]): Promise<Result> {
   await requireAdmin()
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) return { ok: true }
   const supabase = createAdminClient()
 
-  const { data: rows } = await supabase
-    .from("categories")
-    .select("id, sort_order")
-    .order("sort_order", { ascending: true })
+  // Guard against a stale client list (added/removed elsewhere) clobbering rows.
+  const { data: rows } = await supabase.from("categories").select("id")
   if (!rows) return { ok: false, error: "Couldn't reorder." }
+  const known = new Set(rows.map((r) => r.id as string))
+  if (rows.length !== orderedIds.length || orderedIds.some((id) => !known.has(id))) {
+    return { ok: false, error: "List is out of date — refresh and try again." }
+  }
 
-  const index = rows.findIndex((r) => r.id === id)
-  if (index === -1) return { ok: false, error: "Category not found." }
-  const swapWith = direction === "up" ? index - 1 : index + 1
-  if (swapWith < 0 || swapWith >= rows.length) return { ok: true } // already at the edge
-
-  const a = rows[index]
-  const b = rows[swapWith]
-  await Promise.all([
-    supabase.from("categories").update({ sort_order: b.sort_order }).eq("id", a.id),
-    supabase.from("categories").update({ sort_order: a.sort_order }).eq("id", b.id),
-  ])
+  const results = await Promise.all(
+    orderedIds.map((id, i) =>
+      supabase.from("categories").update({ sort_order: i + 1 }).eq("id", id)
+    )
+  )
+  if (results.some((r) => r.error)) {
+    return { ok: false, error: "Couldn't save the new order." }
+  }
 
   revalidateCategoryPaths()
   return { ok: true }
